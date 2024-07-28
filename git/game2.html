@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jump Game</title>
+    <link rel="stylesheet" href="game2.css">
+</head>
+<body>
+    <h1 id="scoreId"></h1>
+    <h2 id="levelId"></h2>
+    <img src="download.jpeg" alt="Player" id="player">
+    <img src="download.jpeg" alt="Player" id="player2">
+    <img src="enmey.jpeg" alt="Enemy" id="enemy">
+    <div id="floor" class="floor-level-1"></div>
+    <div id="gameOver">
+        <h1>GAME OVER</h1>
+        <p>Your Score: <span id="finalScore"></span></p>
+        <p>High Score: <span id="highScore"></span></p>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+    <script>
+    document.addEventListener('keydown', startGame, { once: true });
+    document.addEventListener('mousedown', startGame, { once: true });
+
+    // אלמנטים מה-DOM
+    let player = document.getElementById("player");
+    let player2 = document.getElementById("player2");
+    let enemy = document.getElementById("enemy");
+    let scoreId = document.getElementById("scoreId");
+    let levelId = document.getElementById("levelId");
+    let gameOverScreen = document.getElementById("gameOver");
+    let finalScore = document.getElementById("finalScore");
+    let highScoreDisplay = document.getElementById("highScore");
+    let floor = document.getElementById("floor");
+
+    // משתנים לניקוד ולסטטוס של הקפיצה
+    let score = 0;
+    let isJumping = false;
+    let isJumping2 = false;
+    let gameInterval;
+    let levelUpSound = new Audio("levelUp.wav");
+    let jumpSound = new Audio("jump.wav");
+    let jumpSound2 = new Audio("jump.wav");
+    let gameOverSound = new Audio("gameover.wav");
+
+    let playerPassedEnemy = false;
+    let player2PassedEnemy = false;
+
+    function startGame() {
+        document.addEventListener('keydown', checkKey);
+        gameInterval = setInterval(checkCollision, 100);
+    }
+
+    // זיהוי לחיצה על מקשים לצורך קפיצה
+    function checkKey(event) {
+        if (event.key === ' ') {
+            jump(player, 'jump');
+        }
+        if (event.key === 'w' || event.key === "'" || event.key === "ц") {
+            jump(player2, 'jump');
+        }
+    }
+
+    // פונקציה לקפיצה
+    function jump(player, jumpClass) {
+        if (player === document.getElementById("player") && isJumping) {
+            return;
+        }
+        if (player === document.getElementById("player2") && isJumping2) {
+            return;
+        }
+
+        if (player === document.getElementById("player")) {
+            isJumping = true;
+            jumpSound.play();
+        } else {
+            isJumping2 = true;
+            jumpSound2.play();
+        }
+
+        player.classList.add(jumpClass);
+        setTimeout(() => removeAnimation(player, jumpClass), 700);
+    }
+
+    // פונקציה להסרת האנימציה
+    function removeAnimation(player, jumpClass) {
+        player.classList.remove(jumpClass);
+
+        if (player === document.getElementById("player")) {
+            isJumping = false;
+        } else {
+            isJumping2 = false;
+        }
+    }
+
+    // פונקציה לבדיקת התנגשות
+    function checkCollision() {
+        let playerRect = player.getBoundingClientRect();
+        let player2Rect = player2.getBoundingClientRect();
+        let enemyRect = enemy.getBoundingClientRect();
+
+        if (playerRect.right < enemyRect.left) {
+            playerPassedEnemy = false; // Reset when player is in front of enemy
+        }
+        if (player2Rect.right < enemyRect.left) {
+            player2PassedEnemy = false; // Reset when player2 is in front of enemy
+        }
+
+        if (!playerPassedEnemy && isJumpingOverEnemy(playerRect, enemyRect)) {
+            score++;
+            playerPassedEnemy = true;
+            updateScore();
+        }
+
+        if (!player2PassedEnemy && isJumpingOverEnemy(player2Rect, enemyRect)) {
+            score++;
+            player2PassedEnemy = true;
+            updateScore();
+        }
+
+        if (isColliding(playerRect, enemyRect) || isColliding(player2Rect, enemyRect)) {
+            gameOverSound.play();
+            gameOver();
+        }
+    }
+
+    // פונקציה לבדוק אם השחקן קפץ מעל האויב
+    function isJumpingOverEnemy(playerRect, enemyRect) {
+        return playerRect.bottom <= enemyRect.top && playerRect.right > enemyRect.left && playerRect.left < enemyRect.right;
+    }
+
+    // פונקציה לבדוק אם יש התנגשות
+    function isColliding(playerRect, enemyRect) {
+        return playerRect.right > enemyRect.left && playerRect.left < enemyRect.right && playerRect.bottom > enemyRect.top && playerRect.top < enemyRect.bottom;
+    }
+
+    // פונקציה לעדכן את הניקוד
+    function updateScore() {
+        scoreId.innerHTML = "Score: " + score;
+        if (score % 10 === 0) {
+            levelUp();
+        }
+    }
+
+    // פונקציה להעלאת הרמה
+    function levelUp() {
+        levelUpSound.play();
+        let level = Math.floor(score / 10) + 1;
+        document.body.className = 'level-' + level;
+        floor.className = 'floor-level-' + level;
+        levelId.innerHTML = "Level: " + level;
+    }
+
+    // פונקציה לסיום המשחק
+    function gameOver() {
+        clearInterval(gameInterval);
+        enemy.style.animationPlayState = 'paused';
+        finalScore.innerHTML = score;
+        let highScore = localStorage.getItem('highScore') || 0;
+        if (score > highScore) {
+            localStorage.setItem('highScore', score);
+            highScore = score;
+        }
+        highScoreDisplay.innerHTML = highScore;
+        gameOverScreen.style.display = 'block';
+    }
+
+    // פונקציה לאתחול המשחק
+    function restartGame() {
+        score = 0;
+        scoreId.innerHTML = "Score: " + score;
+        levelId.innerHTML = "Level: 1";
+        gameOverScreen.style.display = 'none';
+        enemy.style.animationPlayState = 'running';
+        document.body.className = 'level-1';
+        floor.className = 'floor-level-1';
+        playerPassedEnemy = false;
+        player2PassedEnemy = false;
+        gameInterval = setInterval(checkCollision, 100);
+        window.location ="#"
+        }
+    </script>
+</body>
+</html>
